@@ -1,5 +1,8 @@
 #include <SD.h>
 #include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include "FastLED.h"
 FASTLED_USING_NAMESPACE
 
@@ -68,22 +71,97 @@ typedef struct __attribute__((__packed__))
 	uint8_t spiSpeed;
 } config_t;
 
+// Display Stuff
+#define OLED_RESET 20
+//SCL - 19
+//SDA - 20
+Adafruit_SSD1306 display(OLED_RESET);
+
+void setup_display(){
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.display();
+    // delay(2000);
+    // display.clearDisplay();
+    // display.setTextSize(1);
+    // display.setTextColor(WHITE);
+    // display.setCursor(0,0);
+    // display.println("POV Saber");
+    // display.setTextColor(BLACK, WHITE); // 'inverted' text
+    // display.println("Animation");
+    // display.display();
+
+}
+
+void displn(String txt, byte row, boolean inverted){
+    display.setCursor(0, row * 8);
+    if(inverted) display.setTextColor(BLACK, WHITE);
+    else display.setTextColor(WHITE);
+    display.print(txt);
+}
+
+void displn(String txt, byte row){
+    displn(txt, row, false);
+}
+
+void display_menu(String title, String items[], byte s){
+    static byte i = 0;
+    displn("File List", 0, true);
+    for(i=0; i<3; i++){
+        displn((s==i ? ">":" ") + items[i], i+1);
+    }
+    display.display();
+}
+
 // File Stuff
 File img_file;
+File root;
 uint32_t img_size = 0;
 uint16_t img_rows = 0;
 const uint16_t row_bytes = NUM_LEDS*3;
 char row[row_bytes];
 
-inline void load_file(){
-    // Serial.print("Initializing SD card...");
+String _files[64];
+uint8_t _file_count = 0;
 
+void find_files(){
+    File root = SD.open("/");
+    while(true){
+        File f = root.openNextFile();
+        if(!f){ f.close(); break; Serial.println("No More");} //no more files, exit
+        if(!f.isDirectory()){ //it's a file!
+            _files[_file_count] = String(f.name());
+        }
+        _file_count++;
+        f.close();
+    }
+    root.close();
+}
+
+void init_sdcard(){
+    // Serial.print("Initializing SD card...");
     if (!SD.begin(BUILTIN_SDCARD)) {
-    //   Serial.println("initialization failed!");
+      // Serial.println("initialization failed!");
       return;
     }
-    // Serial.println("initialization done.");
+    else {
+      // Serial.println("initialization done.");
+    }
+}
 
+void display_files(){
+    static byte i = 0;
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.setTextColor(WHITE);
+    for(i=0; i<4; i++){
+        display.println(_files[i]);
+    }
+    display.display();
+}
+
+inline void load_file(){
     img_file = SD.open("ml_logo", FILE_READ);
     img_size = img_file.size();
     if(img_size % row_bytes != 0){
@@ -112,7 +190,7 @@ inline void setupFastLED()
 {
     FastLED.addLeds<LED_TYPE, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
-    FastLED.setBrightness(32);
+    // FastLED.setBrightness(32);
     FastLED.clear();
     FastLED.show();
 }
@@ -123,9 +201,20 @@ void setup()
     Serial.begin(12000000);
     Serial.setTimeout(1000);
 
-    setupFastLED();
+    init_sdcard();
 
-    load_file();
+    // Serial.println("TESTING!!!!!");
+    // delay(2000);
+    // Serial.println("Hello World!");
+
+    // setupFastLED();
+    setup_display();
+
+    find_files();
+    String items[3] = {
+        _files[0], _files[1], _files[2]
+    };
+    display_menu("File List", items, 0);
 }
 
 #define EMPTYMAX 100
