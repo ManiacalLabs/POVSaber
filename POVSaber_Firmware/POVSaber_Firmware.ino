@@ -1,10 +1,3 @@
-/**********************************
-Generic template for creating *duino firmware that works with
-BiblioPixel DriverSerial. Currently assumes the use of FastLED
-but could be reworked for other libraries.
-If using "SmartMatrix" style panels checkout:
-https://github.com/ManiacalLabs/BiblioPixelSmartMatrix
-**********************************/
 #include <SD.h>
 #include <SPI.h>
 #include "FastLED.h"
@@ -83,39 +76,32 @@ const uint16_t row_bytes = NUM_LEDS*3;
 char row[row_bytes];
 
 inline void load_file(){
-    Serial.print("Initializing SD card...");
+    // Serial.print("Initializing SD card...");
 
     if (!SD.begin(BUILTIN_SDCARD)) {
-      Serial.println("initialization failed!");
+    //   Serial.println("initialization failed!");
       return;
     }
-    Serial.println("initialization done.");
+    // Serial.println("initialization done.");
 
-    img_file = SD.open("rainbow", FILE_READ);
+    img_file = SD.open("ml_logo", FILE_READ);
     img_size = img_file.size();
     if(img_size % row_bytes != 0){
-        Serial.println("Image wrong size!");
+        // Serial.println("Image wrong size!");
     }
 }
 
 void load_next_row(){
     static uint16_t bytes_read = 0;
     bytes_read = img_file.read(((char*)&leds), row_bytes);
-    Serial.println(img_file.position(), DEC);
     if(bytes_read != row_bytes){
-        Serial.println("ran out of data");
+        // File is wrong size, but gracefully fail
         img_file.seek(0); //return to beginning
         return;
     }
-    else{
-        FastLED.show();
-        Serial.println("Show");
+    else if(img_file.position() >= img_size){
+        img_file.seek(0);
     }
-    for(uint16_t i=0; i<row_bytes; i++){
-        Serial.print(((char*)&leds)[i], HEX);
-        Serial.print(",");
-    }
-    Serial.println();
 }
 
 // LED Stuff
@@ -124,18 +110,9 @@ uint8_t bytesPerPixel = 3;
 
 inline void setupFastLED()
 {
-    //There are many options that could be used here.
-    //Checkout the FastLED blink example or their documentation for more:
-    // https://github.com/FastLED/FastLED/blob/master/examples/Blink/Blink.ino
-    //But one of the below should work for standard one or two pin LEDs
-    //Just change the config options above
-
-    //Data and Clock LEDs
     FastLED.addLeds<LED_TYPE, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
-    //Data only LEDs
-    //FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-
+    FastLED.setBrightness(32);
     FastLED.clear();
     FastLED.show();
 }
@@ -146,9 +123,7 @@ void setup()
     Serial.begin(12000000);
     Serial.setTimeout(1000);
 
-    delay(2000);
-
-    // setupFastLED();
+    setupFastLED();
 
     load_file();
 }
@@ -289,16 +264,11 @@ inline void getData()
 
 void loop()
 {
-    // getData();
-    // FastLED.delay(0);
-    if(img_file.position() < img_size){
+    getData();
+    FastLED.delay(0);
+    if(false){
         load_next_row();
         FastLED.show();
-        FastLED.delay(5);
+        FastLED.delay(10);
     }
-    else {
-        Serial.println("End of File");
-        FastLED.delay(1000);
-    }
-    // delay(5);
 }
