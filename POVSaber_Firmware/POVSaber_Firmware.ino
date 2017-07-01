@@ -4,6 +4,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "FastLED.h"
+#include "Bounce2.h"
 FASTLED_USING_NAMESPACE
 
 /****************************
@@ -195,11 +196,81 @@ inline void setupFastLED()
     FastLED.show();
 }
 
+// Btn Handlers
+
+void doA(){
+    Serial.println("A!");
+}
+
+void doB(){
+    Serial.println("B!");
+}
+
+void doC(){
+    Serial.println("C!");
+}
+
+// Button Stuff
+#define BTN_A 0
+#define BTN_B 1
+#define BTN_C 2
+#define BTN_INTERVAL 5
+
+typedef struct __attribute__((__packed__))
+{
+	boolean A;
+    boolean B;
+    boolean C;
+} btns_t;
+
+btns_t btns;
+
+Bounce btn_a = Bounce();
+Bounce btn_b = Bounce();
+Bounce btn_c = Bounce();
+
+inline void setup_btns(){
+    pinMode(BTN_A, INPUT_PULLUP);
+    pinMode(BTN_B, INPUT_PULLUP);
+    pinMode(BTN_C, INPUT_PULLUP);
+
+    btn_a.attach(BTN_A);
+    btn_a.interval(BTN_INTERVAL);
+
+    btn_b.attach(BTN_B);
+    btn_b.interval(BTN_INTERVAL);
+
+    btn_c.attach(BTN_C);
+    btn_c.interval(BTN_INTERVAL);
+}
+
+inline void read_btns(){
+    static boolean a, b, c;
+    btn_a.update();
+    btn_b.update();
+    btn_c.update();
+
+    a = !btn_a.read();
+    if(a && !btns.A) { doA(); btns.A = true; }
+    else if(!a && btns.A){ btns.A = false; }
+
+    b = !btn_b.read();
+    if(b && !btns.B) { doB(); btns.B = true; }
+    else if(!b && btns.B){ btns.B = false; }
+
+    c = !btn_c.read();
+    if(c && !btns.C) { doC(); btns.C = true; }
+    else if(!c && btns.C){ btns.C = false; }
+}
+
+
 void setup()
 {
     // Full USB 1.1 speed, assuming your chip has native USB
     Serial.begin(12000000);
     Serial.setTimeout(1000);
+
+    setup_btns();
 
     init_sdcard();
 
@@ -353,11 +424,17 @@ inline void getData()
 
 void loop()
 {
-    getData();
-    FastLED.delay(0);
-    if(false){
-        load_next_row();
-        FastLED.show();
-        FastLED.delay(10);
-    }
+    // getData();
+    // FastLED.delay(0);
+    // if(false){
+    //     load_next_row();
+    //     FastLED.show();
+    //     FastLED.delay(10);
+    // }
+
+    read_btns();
+
+    // if(btns.A){ Serial.println("A"); }
+    // if(btns.B){ Serial.println("B"); }
+    // if(btns.C){ Serial.println("C"); }
 }
