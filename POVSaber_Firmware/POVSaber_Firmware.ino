@@ -5,33 +5,13 @@
 #include <Adafruit_SSD1306.h>
 #include "FastLED.h"
 #include "Bounce2.h"
+#include "globals.h"
 #include "menus.h"
 FASTLED_USING_NAMESPACE
 
-/****************************
-All Firmware options go here!
-****************************/
-// Uncomment below line if EEPROM available on your board
-// #define USE_EEPROM
-
-// If not using EEPROM, you can specify device ID here
 #ifndef USE_EEPROM
     const uint8_t deviceID = 0;
 #endif
-
-// How many leds in your strip?
-#define NUM_LEDS 144
-
-#define DATA_PIN 11
-#define CLOCK_PIN 13
-
-#define LED_TYPE SK9822
-#define COLOR_ORDER BGR
-
-CRGB leds[NUM_LEDS]; // Define the array of leds
-/***************************
-End Firmware options
-***************************/
 
 #ifdef USE_EEPROM
     #include <EEPROM.h>
@@ -144,19 +124,6 @@ void display_menu(String title, String items[], uint8_t len, byte s){
 }
 
 // File Stuff
-File img_file;
-boolean img_loaded = false;
-File root;
-uint32_t img_size = 0;
-uint16_t img_rows = 0;
-uint16_t img_fps = 0;
-uint16_t img_delay = 0;
-const uint16_t row_bytes = NUM_LEDS*3;
-char row[row_bytes];
-
-String _files[64];
-uint8_t _file_count = 0;
-String _cur_file_name;
 
 void find_files(){
     showln("Loading files...");
@@ -231,9 +198,13 @@ inline void setupFastLED()
 {
     FastLED.addLeds<LED_TYPE, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
-    FastLED.setBrightness(32);
+    set_brightness();
     FastLED.clear();
     FastLED.show();
+}
+
+void set_brightness(){
+    FastLED.setBrightness(map(LED_LEVEL, 0, 100, 0, 255));
 }
 
 // Btn Handlers
@@ -247,7 +218,7 @@ void doB(){
 }
 
 void doC(){
-    Serial.println("C!");
+    handle_menu_back();
 }
 
 // Button Stuff
@@ -309,7 +280,7 @@ void display_main_menu(){
     display_menu(MENU_MAIN_TITLE, _menu_main, MENU_MAIN_LEN, _menu_item);
 }
 
-void display_file_menu(){
+void display_pov_file_menu(){
     if(_menu_item>=_file_count) _menu_item = 0;
     display_menu(MENU_FILES_TITLE, _files, _file_count, _menu_item);
 }
@@ -321,34 +292,68 @@ void display_pov_menu(){
     display.display();
 }
 
+void display_bright_menu(){
+    displn("     Brightness     ", 0, true);
+    display.setTextColor(WHITE);
+    display.setTextSize(2);
+    display.setCursor(0, 12);
+    display.print("   ");
+    display.print(LED_LEVEL);
+    display.print("%");
+    display.setTextSize(1);
+    display.display();
+}
+
 void display_cur_menu(){
     display.clearDisplay();
-    switch(_menu_cur){
-        case MENU_MAIN:
+    switch(_mode){
+        case MODE_MAIN:
             display_main_menu();
             break;
-        case MENU_FILES:
-            display_file_menu();
+        case MODE_POV_FILES:
+            display_pov_file_menu();
             break;
-        case MENU_POV:
+        case MODE_POV:
             display_pov_menu();
             break;
+        case MODE_BRIGHTNESS:
+            display_bright_menu();
+            break;
+        default:
+            showln("Invalid Menu");
     }
 }
 
 void handle_menu_select(){
-    switch(_menu_cur){
-        case MENU_MAIN:
-            // display_main_menu();
+    switch(_mode){
+        case MODE_MAIN:
+            _mode = main_menu_modes[_menu_item];
             break;
-        case MENU_FILES:
+        case MODE_POV_FILES:
             load_file(_files[_menu_item]);
             if(img_loaded)
-                _menu_cur = MENU_POV;
+                _mode = MODE_POV;
             break;
-        case MENU_POV:
+        case MODE_POV:
             img_loaded = false;
-            _menu_cur = MENU_FILES;
+            _mode = MODE_POV_FILES;
+            break;
+        case MODE_BRIGHTNESS:
+            LED_LEVEL += 5;
+            if(LED_LEVEL > 100) LED_LEVEL = 5;
+            set_brightness();
+            break;
+
+    }
+    display_cur_menu();
+}
+
+void handle_menu_back(){
+    switch (_mode) {
+        case MODE_POV_FILES:
+        case MODE_SABER_MENU:
+        case MODE_BRIGHTNESS:
+            _mode = MODE_MAIN;
             break;
     }
     display_cur_menu();
@@ -505,18 +510,51 @@ inline void getData()
     }
 }
 
-void loop()
-{
-    // getData();
-    // FastLED.delay(0);
+void clear_strip(){
+    FastLED.clear();
+    FastLED.show();
+}
+
+inline void mode_pov(){
     if(img_loaded){
         load_next_row();
         FastLED.show();
         FastLED.delay(img_delay);
     }
     else{
-        FastLED.clear();
-        FastLED.show();
+        clear_strip();
+    }
+}
+
+inline void mode_bright(){
+    fill_solid(leds, NUM_LEDS, CRGB::Red);
+    FastLED.show();
+}
+
+void loop()
+{
+    // getData();
+    // FastLED.delay(0);
+    // if(img_loaded){
+    //     load_next_row();
+    //     FastLED.show();
+    //     FastLED.delay(img_delay);
+    // }
+    // else{
+    //     FastLED.clear();
+    //     FastLED.show();
+    // }
+
+    switch (_mode) {
+        case MODE_POV:
+            mode_pov();
+            break;
+        case MODE_BRIGHTNESS:
+            mode_bright();
+            break;
+        default:
+            clear_strip();
+            break;
     }
 
     read_btns();
