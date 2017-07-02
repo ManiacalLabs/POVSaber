@@ -172,6 +172,7 @@ void load_file(String filename){
         _frame_delay = 1000 / img_fps;
         _cur_file_name = filename;
         img_loaded = true;
+        _last_frame = 0;
     }
 }
 
@@ -523,9 +524,11 @@ void clear_strip(){
 
 inline void mode_pov(){
     if(img_loaded){
-        load_next_row();
-        FastLED.show();
-        FastLED.delay(_frame_delay);
+        if(millis() - _last_frame > _frame_delay){
+            load_next_row();
+            FastLED.show();
+            _last_frame = millis();
+        }
     }
     else{
         clear_strip();
