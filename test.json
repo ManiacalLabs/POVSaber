@@ -9,7 +9,7 @@
 
     "layout": {
         "typename": "strip",
-        "brightness": 255
+        "brightness": 64
     },
 
     "animation": {

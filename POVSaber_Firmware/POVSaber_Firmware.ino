@@ -5,6 +5,7 @@
 #include <Adafruit_SSD1306.h>
 #include "FastLED.h"
 #include "Bounce2.h"
+#include "menus.h"
 FASTLED_USING_NAMESPACE
 
 /****************************
@@ -83,16 +84,23 @@ void setup_display(){
     display.clearDisplay();
     display.setTextSize(1);
     display.display();
-    // delay(2000);
-    // display.clearDisplay();
-    // display.setTextSize(1);
-    // display.setTextColor(WHITE);
-    // display.setCursor(0,0);
-    // display.println("POV Saber");
-    // display.setTextColor(BLACK, WHITE); // 'inverted' text
-    // display.println("Animation");
-    // display.display();
+}
 
+void showln(String txt, boolean inverted, uint8_t x, uint8_t y){
+    display.clearDisplay();
+    display.setCursor(x, y);
+    if(inverted) display.setTextColor(BLACK, WHITE);
+    else display.setTextColor(WHITE);
+    display.print(txt);
+    display.display();
+}
+
+void showln(String txt, boolean inverted){
+    showln(txt, inverted, 0, 12);
+}
+
+void showln(String txt){
+    showln(txt, false);
 }
 
 void displn(String txt, byte row, boolean inverted){
@@ -106,17 +114,38 @@ void displn(String txt, byte row){
     displn(txt, row, false);
 }
 
-void display_menu(String title, String items[], byte s){
-    static byte i = 0;
-    displn("File List", 0, true);
-    for(i=0; i<3; i++){
-        displn((s==i ? ">":" ") + items[i], i+1);
+void display_menu(String title, String items[], uint8_t len, byte s){
+    static int8_t i;
+    static int8_t entries[3];
+    static uint8_t max;
+    max = 3;
+    if(len >= max){
+        entries[0] = s - 1;
+        entries[1] = s;
+        entries[2] = s + 1;
+        if(entries[0] < 0) entries[0] = len - 1;
+        if(entries[2] > (len - 1)) entries[2] = 0;
+        s = 1; // set back to center entry
     }
+    else{
+        entries[0] = 0;
+        entries[1] = 1;
+        entries[2] = 2;
+        max = len;
+    }
+
+    displn(title, 0, true);
+
+    for(i=0; i<max; i++){
+        displn((s==i ? ">":" ") + items[entries[i]], i+1);
+    }
+
     display.display();
 }
 
 // File Stuff
 File img_file;
+boolean img_loaded = false;
 File root;
 uint32_t img_size = 0;
 uint16_t img_rows = 0;
@@ -125,61 +154,67 @@ char row[row_bytes];
 
 String _files[64];
 uint8_t _file_count = 0;
+String _cur_file_name;
 
 void find_files(){
+    showln("Loading files...");
     File root = SD.open("/");
     while(true){
         File f = root.openNextFile();
-        if(!f){ f.close(); break; Serial.println("No More");} //no more files, exit
+        if(!f){ f.close(); break;} //no more files, exit
         if(!f.isDirectory()){ //it's a file!
             _files[_file_count] = String(f.name());
+            showln(f.name());
+            _file_count++;
         }
-        _file_count++;
         f.close();
     }
     root.close();
 }
 
-void init_sdcard(){
-    // Serial.print("Initializing SD card...");
+boolean init_sdcard(){
+    showln("Loading SD card...");
     if (!SD.begin(BUILTIN_SDCARD)) {
       // Serial.println("initialization failed!");
-      return;
+      showln("   SD Load FAIL :(   ", true);
+      return false;
     }
     else {
-      // Serial.println("initialization done.");
+      showln("   SD Load Success!   ", true);
     }
+
+    return true;
 }
 
-void display_files(){
-    static byte i = 0;
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.setTextColor(WHITE);
-    for(i=0; i<4; i++){
-        display.println(_files[i]);
-    }
-    display.display();
-}
-
-inline void load_file(){
-    img_file = SD.open("ml_logo", FILE_READ);
+void load_file(String filename){
+    img_loaded = false;
+    _cur_file_name = "";
+    Serial.print("Loading ");Serial.println(filename);
+    img_file = SD.open(filename.c_str(), FILE_READ);
     img_size = img_file.size();
     if(img_size % row_bytes != 0){
-        // Serial.println("Image wrong size!");
+        showln("File wrong size!");
+        delay(2000);
+    }
+    else{
+        _cur_file_name = filename;
+        img_loaded = true;
     }
 }
 
 void load_next_row(){
-    static uint16_t bytes_read = 0;
-    bytes_read = img_file.read(((char*)&leds), row_bytes);
-    if(bytes_read != row_bytes){
-        // File is wrong size, but gracefully fail
-        img_file.seek(0); //return to beginning
-        return;
-    }
-    else if(img_file.position() >= img_size){
-        img_file.seek(0);
+    if(img_loaded){
+        Serial.println("Next row");
+        static uint16_t bytes_read = 0;
+        bytes_read = img_file.read(((char*)&leds), row_bytes);
+        if(bytes_read != row_bytes){
+            // File is wrong size, but gracefully fail
+            img_file.seek(0); //return to beginning
+            return;
+        }
+        else if(img_file.position() >= img_size){
+            img_file.seek(0);
+        }
     }
 }
 
@@ -191,19 +226,19 @@ inline void setupFastLED()
 {
     FastLED.addLeds<LED_TYPE, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
-    // FastLED.setBrightness(32);
+    FastLED.setBrightness(32);
     FastLED.clear();
     FastLED.show();
 }
 
 // Btn Handlers
-
 void doA(){
-    Serial.println("A!");
+    handle_menu_select();
 }
 
 void doB(){
-    Serial.println("B!");
+    _menu_item++;
+    display_cur_menu();
 }
 
 void doC(){
@@ -263,6 +298,55 @@ inline void read_btns(){
     else if(!c && btns.C){ btns.C = false; }
 }
 
+// Menu Stuff
+void display_main_menu(){
+    if(_menu_item>=MENU_MAIN_LEN) _menu_item = 0;
+    display_menu(MENU_MAIN_TITLE, _menu_main, MENU_MAIN_LEN, _menu_item);
+}
+
+void display_file_menu(){
+    if(_menu_item>=_file_count) _menu_item = 0;
+    display_menu(MENU_FILES_TITLE, _files, _file_count, _menu_item);
+}
+
+void display_pov_menu(){
+    displn("     Showing POV     ", 0, true);
+    displn(_cur_file_name, 2, false);
+    display.display();
+}
+
+void display_cur_menu(){
+    display.clearDisplay();
+    switch(_menu_cur){
+        case MENU_MAIN:
+            display_main_menu();
+            break;
+        case MENU_FILES:
+            display_file_menu();
+            break;
+        case MENU_POV:
+            display_pov_menu();
+            break;
+    }
+}
+
+void handle_menu_select(){
+    switch(_menu_cur){
+        case MENU_MAIN:
+            // display_main_menu();
+            break;
+        case MENU_FILES:
+            load_file(_files[_menu_item]);
+            if(img_loaded)
+                _menu_cur = MENU_POV;
+            break;
+        case MENU_POV:
+            img_loaded = false;
+            _menu_cur = MENU_FILES;
+            break;
+    }
+    display_cur_menu();
+}
 
 void setup()
 {
@@ -270,22 +354,15 @@ void setup()
     Serial.begin(12000000);
     Serial.setTimeout(1000);
 
-    setup_btns();
-
-    init_sdcard();
-
-    // Serial.println("TESTING!!!!!");
-    // delay(2000);
-    // Serial.println("Hello World!");
-
-    // setupFastLED();
+    setupFastLED();
     setup_display();
+    if(!init_sdcard()) return;
 
     find_files();
-    String items[3] = {
-        _files[0], _files[1], _files[2]
-    };
-    display_menu("File List", items, 0);
+
+    display_cur_menu();
+
+    setup_btns();
 }
 
 #define EMPTYMAX 100
@@ -426,15 +503,15 @@ void loop()
 {
     // getData();
     // FastLED.delay(0);
-    // if(false){
-    //     load_next_row();
-    //     FastLED.show();
-    //     FastLED.delay(10);
-    // }
+    if(img_loaded){
+        load_next_row();
+        FastLED.show();
+        FastLED.delay(10);
+    }
+    else{
+        FastLED.clear();
+        FastLED.show();
+    }
 
     read_btns();
-
-    // if(btns.A){ Serial.println("A"); }
-    // if(btns.B){ Serial.println("B"); }
-    // if(btns.C){ Serial.println("C"); }
 }
