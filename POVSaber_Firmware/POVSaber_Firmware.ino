@@ -149,6 +149,8 @@ boolean img_loaded = false;
 File root;
 uint32_t img_size = 0;
 uint16_t img_rows = 0;
+uint16_t img_fps = 0;
+uint16_t img_delay = 0;
 const uint16_t row_bytes = NUM_LEDS*3;
 char row[row_bytes];
 
@@ -189,7 +191,6 @@ boolean init_sdcard(){
 void load_file(String filename){
     img_loaded = false;
     _cur_file_name = "";
-    Serial.print("Loading ");Serial.println(filename);
     img_file = SD.open(filename.c_str(), FILE_READ);
     img_size = img_file.size();
     if(img_size % row_bytes != 0){
@@ -197,6 +198,11 @@ void load_file(String filename){
         delay(2000);
     }
     else{
+        uint8_t len = filename.length();
+        String ext = filename.substring(len - 3);
+        img_fps = ext.toInt();
+        if(img_fps == 0) img_fps = 30;
+        img_delay = 1000 / img_fps;
         _cur_file_name = filename;
         img_loaded = true;
     }
@@ -204,7 +210,6 @@ void load_file(String filename){
 
 void load_next_row(){
     if(img_loaded){
-        Serial.println("Next row");
         static uint16_t bytes_read = 0;
         bytes_read = img_file.read(((char*)&leds), row_bytes);
         if(bytes_read != row_bytes){
@@ -312,6 +317,7 @@ void display_file_menu(){
 void display_pov_menu(){
     displn("     Showing POV     ", 0, true);
     displn(_cur_file_name, 2, false);
+    displn(String(img_fps) + " FPS", 3, false);
     display.display();
 }
 
@@ -506,7 +512,7 @@ void loop()
     if(img_loaded){
         load_next_row();
         FastLED.show();
-        FastLED.delay(10);
+        FastLED.delay(img_delay);
     }
     else{
         FastLED.clear();
