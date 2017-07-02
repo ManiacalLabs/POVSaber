@@ -39,11 +39,19 @@ long _last_frame = 0;
 long _frame_delay = 0;
 
 // Saber
+bool _saber_shrink = false;
 uint16_t _saber_step = 0;
+CRGB _saber_base = CRGB::Red;
+uint8_t _saber_white_chance1 = 0;
+uint8_t _saber_white_chance2 = 0;
+uint8_t _saber_black_chance1 = 0;
+uint8_t _saber_black_chance2 = 0;
+#define SABER_FRAME_DELAY 3
+#define SABER_FINAL_FRAME_DELAY 50
 
 // Files
 File img_file;
-boolean img_loaded = false;
+bool img_loaded = false;
 File root;
 uint32_t img_size = 0;
 uint16_t img_rows = 0;

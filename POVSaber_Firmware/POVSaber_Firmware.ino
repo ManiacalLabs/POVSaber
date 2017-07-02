@@ -66,7 +66,7 @@ void setup_display(){
     display.display();
 }
 
-void showln(String txt, boolean inverted, uint8_t x, uint8_t y){
+void showln(String txt, bool inverted, uint8_t x, uint8_t y){
     display.clearDisplay();
     display.setCursor(x, y);
     if(inverted) display.setTextColor(BLACK, WHITE);
@@ -75,7 +75,7 @@ void showln(String txt, boolean inverted, uint8_t x, uint8_t y){
     display.display();
 }
 
-void showln(String txt, boolean inverted){
+void showln(String txt, bool inverted){
     showln(txt, inverted, 0, 12);
 }
 
@@ -83,7 +83,7 @@ void showln(String txt){
     showln(txt, false);
 }
 
-void displn(String txt, byte row, boolean inverted){
+void displn(String txt, byte row, bool inverted){
     display.setCursor(0, row * 8);
     if(inverted) display.setTextColor(BLACK, WHITE);
     else display.setTextColor(WHITE);
@@ -141,7 +141,7 @@ void find_files(){
     root.close();
 }
 
-boolean init_sdcard(){
+bool init_sdcard(){
     showln("Loading SD card...");
     if (!SD.begin(BUILTIN_SDCARD)) {
       // Serial.println("initialization failed!");
@@ -236,9 +236,9 @@ void doC(){
 
 typedef struct __attribute__((__packed__))
 {
-	boolean A;
-    boolean B;
-    boolean C;
+	bool A;
+    bool B;
+    bool C;
 } btns_t;
 
 btns_t btns;
@@ -263,7 +263,7 @@ inline void setup_btns(){
 }
 
 inline void read_btns(){
-    static boolean a, b, c;
+    static bool a, b, c;
     btn_a.update();
     btn_b.update();
     btn_c.update();
@@ -311,6 +311,17 @@ void display_bright_menu(){
     display.display();
 }
 
+void display_saber_list_menu(){
+    if(_menu_item>=MENU_SABER_LEN) _menu_item = 0;
+    display_menu(MENU_SABER_TITLE, _menu_sabers, MENU_SABER_LEN, _menu_item);
+}
+
+void display_saber_menu(){
+    displn("      Saber     ", 0, true);
+    displn(_menu_sabers[_menu_item], 2, false);
+    display.display();
+}
+
 void display_cur_menu(){
     display.clearDisplay();
     switch(_mode){
@@ -326,6 +337,12 @@ void display_cur_menu(){
         case MODE_BRIGHTNESS:
             display_bright_menu();
             break;
+        case MODE_SABER_MENU:
+            display_saber_list_menu();
+            break;
+        case MODE_SABER:
+            display_saber_menu();
+            break;
         default:
             showln("Invalid Menu");
     }
@@ -335,6 +352,7 @@ void handle_menu_select(){
     switch(_mode){
         case MODE_MAIN:
             _mode = main_menu_modes[_menu_item];
+            _menu_item = 0;
             break;
         case MODE_POV_FILES:
             load_file(_files[_menu_item]);
@@ -350,6 +368,18 @@ void handle_menu_select(){
             if(LED_LEVEL > 100) LED_LEVEL = LED_LEVEL_STEP;
             set_brightness();
             break;
+        case MODE_SABER_MENU:
+            _last_frame = 0;
+            _frame_delay = SABER_FRAME_DELAY;
+            _saber_step = 0;
+            _saber_shrink = false;
+            _mode = MODE_SABER;
+            setup_saber();
+            break;
+        case MODE_SABER:
+            _saber_shrink = true;
+            _frame_delay = SABER_FRAME_DELAY;
+            break;
 
     }
     display_cur_menu();
@@ -360,6 +390,7 @@ void handle_menu_back(){
         case MODE_POV_FILES:
         case MODE_SABER_MENU:
         case MODE_BRIGHTNESS:
+            _menu_item = 0;
             _mode = MODE_MAIN;
             break;
     }
@@ -541,8 +572,79 @@ inline void mode_bright(){
     FastLED.show();
 }
 
-inline void mode_saber(){
+void add_flash( fract8 chance, CRGB color)
+{
+  if( random8() < chance) {
+    leds[ random16(NUM_LEDS) ] = color;
+  }
+}
 
+inline void mode_saber(){
+    if(millis() - _last_frame > _frame_delay){
+        if(_saber_shrink){
+            FastLED.clear();
+            fill_solid(leds, _saber_step, _saber_base);
+            _saber_step--;
+            if(_saber_step <= 0){
+                _mode = MODE_SABER_MENU;
+                display_cur_menu();
+            }
+        }
+        else{
+            if(_saber_step < NUM_LEDS){
+                FastLED.clear();
+                fill_solid(leds, _saber_step, _saber_base);
+                _saber_step++;
+            }
+            else{
+                _frame_delay = SABER_FINAL_FRAME_DELAY;
+                FastLED.clear();
+                fill_solid(leds, NUM_LEDS, _saber_base);
+                add_flash(_saber_black_chance1, {0, 0, 0});
+                add_flash(_saber_black_chance2, {0, 0, 0});
+                add_flash(_saber_white_chance1, {32, 32, 32});
+                add_flash(_saber_white_chance2, {128, 128, 128});
+
+            }
+        }
+        FastLED.show();
+        _last_frame = millis();
+    }
+}
+
+inline void setup_saber(){
+    _saber_base = CRGB::Red;
+    _saber_white_chance1 = 128;
+    _saber_white_chance2 = 0;
+    _saber_black_chance1 = 128;
+    _saber_black_chance2 = 0;
+    switch (_menu_item) {
+        case 0: //Red
+            _saber_base = CRGB::Red;
+            break;
+        case 1: //Orange
+            _saber_base = CRGB::Orange;
+            break;
+        case 2: //Yellow
+            _saber_base = CRGB::Yellow;
+            break;
+        case 3: //Green
+            _saber_base = CRGB::Green;
+            break;
+        case 4: //Blue
+            _saber_base = CRGB::Blue;
+            break;
+        case 5: //Purple
+            _saber_base = CRGB::Purple;
+            break;
+        case 6: //Kylo
+            _saber_base = CRGB::Red;
+            _saber_white_chance1 = 255;
+            _saber_white_chance2 = 255;
+            _saber_black_chance1 = 255;
+            _saber_black_chance2 = 255;
+            break;
+    }
 }
 
 void loop()
@@ -565,6 +667,9 @@ void loop()
             break;
         case MODE_BRIGHTNESS:
             mode_bright();
+            break;
+        case MODE_SABER:
+            mode_saber();
             break;
         default:
             clear_strip();
