@@ -9,7 +9,14 @@
 
 CRGB leds[NUM_LEDS];
 
+// these are for the 0 - 100%
+#define LED_LEVEL_STEP 10
 uint8_t LED_LEVEL = 10;
+
+// these are for 0 - 255
+#define LED_LEVEL_MIN 0
+#define LED_LEVEL_MAX 64
+
 
 // Mode
 #define MODE_MAIN 0

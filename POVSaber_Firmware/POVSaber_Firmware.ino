@@ -204,12 +204,13 @@ inline void setupFastLED()
 }
 
 void set_brightness(){
-    FastLED.setBrightness(map(LED_LEVEL, 0, 100, 0, 255));
+    FastLED.setBrightness(map(LED_LEVEL, 0, 100, LED_LEVEL_MIN, LED_LEVEL_MAX));
 }
 
 // Btn Handlers
 void doA(){
     handle_menu_select();
+    _menu_item = 0;
 }
 
 void doB(){
@@ -339,8 +340,8 @@ void handle_menu_select(){
             _mode = MODE_POV_FILES;
             break;
         case MODE_BRIGHTNESS:
-            LED_LEVEL += 5;
-            if(LED_LEVEL > 100) LED_LEVEL = 5;
+            LED_LEVEL += LED_LEVEL_STEP;
+            if(LED_LEVEL > 100) LED_LEVEL = LED_LEVEL_STEP;
             set_brightness();
             break;
 
@@ -527,7 +528,8 @@ inline void mode_pov(){
 }
 
 inline void mode_bright(){
-    fill_solid(leds, NUM_LEDS, CRGB::Red);
+    // fill_solid(leds, NUM_LEDS, CRGB::Red);
+    fill_rainbow(leds, NUM_LEDS, 0, 3);
     FastLED.show();
 }
 
