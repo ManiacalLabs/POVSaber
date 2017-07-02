@@ -34,6 +34,10 @@ const uint8_t main_menu_modes[] =
     MODE_SABER_MENU
 };
 
+// Timing
+long _last_frame = 0;
+long _frame_delay = 0;
+
 // Saber
 uint16_t _saber_step = 0;
 
@@ -44,7 +48,6 @@ File root;
 uint32_t img_size = 0;
 uint16_t img_rows = 0;
 uint16_t img_fps = 0;
-uint16_t img_delay = 0;
 const uint16_t row_bytes = NUM_LEDS*3;
 char row[row_bytes];
 

@@ -169,7 +169,7 @@ void load_file(String filename){
         String ext = filename.substring(len - 3);
         img_fps = ext.toInt();
         if(img_fps == 0) img_fps = 30;
-        img_delay = 1000 / img_fps;
+        _frame_delay = 1000 / img_fps;
         _cur_file_name = filename;
         img_loaded = true;
     }
@@ -210,11 +210,16 @@ void set_brightness(){
 // Btn Handlers
 void doA(){
     handle_menu_select();
-    _menu_item = 0;
 }
 
 void doB(){
-    _menu_item++;
+    switch (_mode) {
+        case MODE_MAIN:
+        case MODE_POV_FILES:
+        case MODE_SABER_MENU:
+            _menu_item++;
+            break;
+    }
     display_cur_menu();
 }
 
@@ -520,7 +525,7 @@ inline void mode_pov(){
     if(img_loaded){
         load_next_row();
         FastLED.show();
-        FastLED.delay(img_delay);
+        FastLED.delay(_frame_delay);
     }
     else{
         clear_strip();
@@ -533,6 +538,10 @@ inline void mode_bright(){
     FastLED.show();
 }
 
+inline void mode_saber(){
+
+}
+
 void loop()
 {
     // getData();
@@ -540,7 +549,7 @@ void loop()
     // if(img_loaded){
     //     load_next_row();
     //     FastLED.show();
-    //     FastLED.delay(img_delay);
+    //     FastLED.delay(_frame_delay);
     // }
     // else{
     //     FastLED.clear();
