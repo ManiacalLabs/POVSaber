@@ -1,0 +1,5 @@
+(fp_lib_table
+  (lib (name teensy)(type KiCad)(uri "$(KIPRJMOD)/teensy.pretty")(options "")(descr ""))
+  (lib (name w_switch)(type KiCad)(uri "$(KIPRJMOD)/w_switch.pretty")(options "")(descr ""))
+  (lib (name oled)(type KiCad)(uri "$(KIPRJMOD)/oled.pretty")(options "")(descr ""))
+)
