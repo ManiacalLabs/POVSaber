@@ -194,10 +194,12 @@ void load_next_row(){
 // LED Stuff
 uint16_t numLEDs = NUM_LEDS;
 uint8_t bytesPerPixel = 3;
-
+CLEDController * pLed = NULL;
 inline void setupFastLED()
 {
-    FastLED.addLeds<LED_TYPE, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+    pLed = new APA102Controller<DATA_PIN, CLOCK_PIN, COLOR_ORDER>();
+    FastLED.addLeds(pLed, leds, NUM_LEDS);
+    // FastLED.addLeds<LED_TYPE, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
     set_brightness();
     FastLED.clear();
@@ -205,7 +207,8 @@ inline void setupFastLED()
 }
 
 void set_brightness(){
-    FastLED.setBrightness(map(LED_LEVEL, 0, 100, LED_LEVEL_MIN, LED_LEVEL_MAX));
+    pLed->scale(map(LED_LEVEL, 0, 100, LED_LEVEL_MIN, LED_LEVEL_MAX));
+    // FastLED.setBrightness(map(LED_LEVEL, 0, 100, LED_LEVEL_MIN, LED_LEVEL_MAX));
 }
 
 // Btn Handlers
