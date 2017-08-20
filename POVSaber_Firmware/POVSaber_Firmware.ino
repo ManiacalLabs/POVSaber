@@ -183,7 +183,6 @@ void load_next_row(){
         if(bytes_read != row_bytes){
             // File is wrong size, but gracefully fail
             img_file.seek(0); //return to beginning
-            return;
         }
         else if(img_file.position() >= img_size){
             img_file.seek(0);
@@ -417,140 +416,6 @@ void setup()
     setup_btns();
 }
 
-#define EMPTYMAX 100
-inline void getData()
-{
-    static char cmd = 0;
-    static uint16_t size = 0;
-    static uint16_t count = 0;
-    static uint8_t emptyCount = 0;
-    static size_t c = 0;
-    static uint16_t packSize = numLEDs * bytesPerPixel;
-
-    if (Serial.available())
-    {
-        cmd = Serial.read();
-        size = 0;
-        Serial.readBytes((char*)&size, 2);
-
-        if (cmd == CMDTYPE::PIXEL_DATA)
-        {
-            count = 0;
-            emptyCount = 0;
-
-            if (size == packSize)
-            {
-                while (count < packSize)
-                {
-                    c = Serial.readBytes(((char*)&leds) + count, packSize - count);
-                    if (c == 0)
-                    {
-                        emptyCount++;
-                        if(emptyCount > EMPTYMAX) break;
-                    }
-                    else
-                    {
-                        emptyCount = 0;
-                    }
-
-                    count += c;
-                }
-            }
-
-            uint8_t resp = RETURN_CODES::SUCCESS;
-            if (count == packSize)
-            {
-                FastLED.show();
-            }
-            else
-                resp = RETURN_CODES::ERROR_SIZE;
-
-            Serial.write(resp);
-        }
-        else if(cmd == CMDTYPE::GETID)
-        {
-            #ifdef USE_EEPROM
-                Serial.write(EEPROM.read(16));
-            #else
-                Serial.write(deviceID);
-            #endif
-        }
-        else if(cmd == CMDTYPE::SETID)
-        {
-            if(size != 1)
-            {
-                Serial.write(RETURN_CODES::ERROR_SIZE);
-            }
-            else
-            {
-                uint8_t id = Serial.read();
-                #ifdef USE_EEPROM
-                    EEPROM.write(16, id);
-                #endif
-                Serial.write(RETURN_CODES::SUCCESS);
-            }
-        }
-        else if (cmd == CMDTYPE::SETUP_DATA)
-        {
-            // for(int i=0; i<size; i++) Serial.read();
-
-            uint8_t result = RETURN_CODES::SUCCESS;
-            config_t temp;
-
-            if (size != sizeof(config_t))
-            {
-                result = RETURN_CODES::ERROR_SIZE;
-            }
-            else
-            {
-                size_t read = Serial.readBytes((char*)&temp, sizeof(config_t));
-                if (read != size)
-                {
-                    result = RETURN_CODES::ERROR_SIZE;
-                }
-                else
-                {
-                    if(temp.pixelCount / bytesPerPixel != NUM_LEDS)
-                        result = RETURN_CODES::ERROR_PIXEL_COUNT;
-                }
-            }
-
-            Serial.write(result);
-        }
-        else if (cmd == CMDTYPE::BRIGHTNESS)
-        {
-            uint8_t result = RETURN_CODES::SUCCESS;
-            if (size != 1)
-                result = RETURN_CODES::ERROR_SIZE;
-            else
-            {
-                uint8_t brightness = 255;
-                size_t read = Serial.readBytes((char*)&brightness, 1);
-                if (read != size)
-                    result = RETURN_CODES::ERROR_SIZE;
-                else
-                {
-                    FastLED.setBrightness(brightness);
-                }
-            }
-
-            Serial.write(result);
-        }
-        else if (cmd == CMDTYPE::GETVER)
-        {
-            Serial.write(RETURN_CODES::SUCCESS);
-            Serial.write(FIRMWARE_VER);
-        }
-        else
-        {
-            Serial.write(RETURN_CODES::ERROR_BAD_CMD);
-        }
-
-
-        Serial.flush();
-    }
-}
-
 void clear_strip(){
     FastLED.clear();
     FastLED.show();
@@ -616,34 +481,34 @@ inline void mode_saber(){
 }
 
 inline void setup_saber(){
-    _saber_base = CRGB::Red;
-    _saber_white_chance1 = 128;
+    _saber_base = CRGB(255, 0, 0);
+    _saber_white_chance1 = 0;
     _saber_white_chance2 = 0;
-    _saber_black_chance1 = 128;
+    _saber_black_chance1 = 16;
     _saber_black_chance2 = 0;
     switch (_menu_item) {
         case 0: //Red
-            _saber_base = CRGB::Red;
+            _saber_base = CRGB(255, 0, 0);
             break;
         case 1: //Orange
-            _saber_base = CRGB::Orange;
+            _saber_base = CRGB(255, 28, 0);
             break;
         case 2: //Yellow
-            _saber_base = CRGB::Yellow;
+            _saber_base = CRGB(255, 72, 0);
             break;
         case 3: //Green
-            _saber_base = CRGB::Green;
+            _saber_base = CRGB(0, 255, 0);
             break;
         case 4: //Blue
-            _saber_base = CRGB::Blue;
+            _saber_base = CRGB(0, 0, 255);
             break;
         case 5: //Purple
-            _saber_base = CRGB::Purple;
+            _saber_base = CRGB(46, 0, 46);
             break;
         case 6: //Kylo
-            _saber_base = CRGB::Red;
-            _saber_white_chance1 = 255;
-            _saber_white_chance2 = 255;
+            _saber_base = CRGB(255, 0, 0);
+            _saber_white_chance1 = 64;
+            _saber_white_chance2 = 64;
             _saber_black_chance1 = 255;
             _saber_black_chance2 = 255;
             break;
@@ -652,18 +517,6 @@ inline void setup_saber(){
 
 void loop()
 {
-    // getData();
-    // FastLED.delay(0);
-    // if(img_loaded){
-    //     load_next_row();
-    //     FastLED.show();
-    //     FastLED.delay(_frame_delay);
-    // }
-    // else{
-    //     FastLED.clear();
-    //     FastLED.show();
-    // }
-
     switch (_mode) {
         case MODE_POV:
             mode_pov();

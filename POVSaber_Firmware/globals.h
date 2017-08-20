@@ -41,7 +41,7 @@ long _frame_delay = 0;
 // Saber
 bool _saber_shrink = false;
 uint16_t _saber_step = 0;
-CRGB _saber_base = CRGB::Red;
+CRGB _saber_base = CRGB(255, 0, 0);
 uint8_t _saber_white_chance1 = 0;
 uint8_t _saber_white_chance2 = 0;
 uint8_t _saber_black_chance1 = 0;
