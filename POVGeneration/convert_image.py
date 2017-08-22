@@ -1,7 +1,7 @@
 import sys
 import struct
 from PIL import Image
-from bibliopixel.colors.gamma import APA102
+from bibliopixel.colors.gamma import APA102, DEFAULT
 
 
 def main(img_file, out_file):

@@ -11,7 +11,7 @@ class POVGen(DriverBase):
     def __init__(self, num, filename=None):
         super().__init__(num, gamma=APA102)
         self.filename = filename
-        self.file = open(self.filename, 'rb+')
+        self.file = open(self.filename, 'wb+')
         self.rows = 0
 
     def cleanup(self):
