@@ -7,13 +7,14 @@ from POVGenDriver import POVGen
 from bibliopixel.drivers.SimPixel import SimPixel
 from bibliopixel import Strip, log
 from bibliopixel.project.importer import import_symbol
+from PIL import Image
 
 # log.set_log_level('debug')
 
 NUM = 144
 
 
-def main(anim_cls, fps, json_params, sim, num, args):
+def main(anim_cls, fps, json_params, sim, num, verify, args):
     params = {}
     if json_params:
         params = json.loads(json_params)
@@ -25,7 +26,6 @@ def main(anim_cls, fps, json_params, sim, num, args):
         driver = SimPixel(num=144)
         num = 0
     else:
-        num = num - 1
         filename = './POV_Files/' + anim_cls.split('.')[::-1][0] + '.' + str(fps).zfill(3)
         cfg_filename = './POV_Files/' + anim_cls.split('.')[::-1][0] + '_' + str(fps) + '.json'
         if args:
@@ -42,6 +42,19 @@ def main(anim_cls, fps, json_params, sim, num, args):
 
     anim.run(fps=fps, max_steps=num)
     driver.cleanup()
+    if not sim and verify:
+        with open(filename, 'rb') as data:
+            data = list(bytearray(data.read()))
+        color_list = [tuple(data[x:x + 3]) for x in range(0, len(data), 3)]
+        rows = [color_list[x:x + NUM] for x in range(0, len(color_list), NUM)]
+        row_count = len(rows)
+        flat = [c for row in rows for c in row]
+        img = Image.new('RGB', (NUM, row_count))
+        img.putdata(flat)
+        img.save(filename + '.png')
+        fl_img = Image.new('RGB', (NUM, 2))
+        fl_img.putdata(rows[-1] + rows[0])
+        fl_img.save(filename + '_fl.png')
 
 
 if __name__ == '__main__':
@@ -53,6 +66,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', action='store_true', default=False, help='Simulate')
     parser.add_argument('-n', action='store', type=int, default=NUM * 2 - 1, help='Number of frames to run')
     parser.add_argument('-a', action='store', default=None, help='Args from JSON')
+    parser.add_argument('-v', action='store_true', default=None, help='Verify by creating loop image')
 
     args = vars(parser.parse_args(sys.argv[1:]))
 
@@ -63,4 +77,4 @@ if __name__ == '__main__':
         from_file = True
 
     args.pop('a', None)
-    main(args['c'], args['f'], args['j'], args['s'], args['n'], None if from_file else args)
+    main(args['c'], args['f'], args['j'], args['s'], args['n'], args['v'], None if from_file else args)
